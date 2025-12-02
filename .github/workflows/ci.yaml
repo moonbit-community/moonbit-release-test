@@ -1,0 +1,275 @@
+name: ci
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ master ]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os:
+          - name: ubuntu-latest
+            triple: x86_64-linux-gnu
+          - name: macos-latest
+            triple: arm64-apple-darwin
+          - name: windows-latest
+            triple: x86_64-w64-msvc
+      fail-fast: false
+    runs-on: ${{ matrix.os.name }}
+    # This for `moonbitlang/x` CI 
+    env: 
+      OS_PLATFORM: ${{ matrix.os.name }}
+
+    continue-on-error: false
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: true 
+      
+      - name: Setup MoonBit toolchain
+        run: node scripts_node/install-moonbit-toolchain.js
+        env: 
+          MOONBIT_VERSION: pre-release
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.18.0'  # Specific major version
+
+
+      - name: MoonBit toolchain version
+        run:  moon version --all
+
+      - name: Update MoonBit mooncakes registry
+        run: moon update
+
+      - name: Install Dependencies for each repo 
+        run: |
+          moon install -C repos/core/
+          moon install -C repos/x/
+          moon install -C repos/async/
+
+
+      # setup windows and unix environment
+      - name: Setup MSVC
+        if: ${{ matrix.os.name == 'windows-latest' }}
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Set ulimit on unix
+        if: ${{ matrix.os.name != 'windows-latest' }}
+        run: |
+          ulimit -s 8176
+      
+      - name: Test for moonbitlang/core 
+        run: |
+          moon test --target all,native 
+        working-directory: repos/core/
+      # here use `working-directory` to workaround
+      - name: Test for moonbitlang/x
+        run: |
+          moon test --target all,native 
+        working-directory: repos/x/
+
+      # here use `working-directory` to workaround
+      - name: Test for moonbitlang/async
+        if: ${{ matrix.os.name != 'windows-latest' }}
+        run: |
+          moon test --target native 
+        working-directory: repos/async/
+
+  format:
+    strategy:
+      matrix:
+        os:
+          - name: ubuntu-latest
+            triple: x86_64-linux-gnu
+          - name: macos-latest
+            triple: arm64-apple-darwin
+          - name: windows-latest
+            triple: x86_64-w64-msvc
+      fail-fast: false
+    runs-on: ${{ matrix.os.name }}
+    # This for `moonbitlang/x` CI 
+    env: 
+      OS_PLATFORM: ${{ matrix.os.name }}
+
+    continue-on-error: false
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: true 
+      
+      - name: Setup MoonBit toolchain
+        run: node scripts_node/install-moonbit-toolchain.js
+        env: 
+          MOONBIT_VERSION: pre-release
+
+      - name: MoonBit toolchain version
+        run:  moon version --all
+
+      - name: Update MoonBit mooncakes registry
+        run: moon update
+
+      - name: Install Dependencies for each repo 
+        run: |
+          moon install -C repos/core/
+          moon install -C repos/x/
+          moon install -C repos/async/
+
+      - name: moon fmt for `moonbitlang/core`
+        run: |
+          moon fmt 
+          git diff --exit-code
+        working-directory: repos/core/
+      
+      - name: moon fmt for `moonbitlang/x`
+        run: |
+          moon fmt 
+          git diff --exit-code
+        working-directory: repos/x/
+
+      - name: moon fmt for `moonbitlang/async`
+        run: |
+          moon fmt 
+          git diff --exit-code
+        working-directory: repos/async/
+
+  info:
+    strategy:
+      matrix:
+        os:
+          - name: ubuntu-latest
+            triple: x86_64-linux-gnu
+          - name: macos-latest
+            triple: arm64-apple-darwin
+          - name: windows-latest
+            triple: x86_64-w64-msvc
+      fail-fast: false
+    runs-on: ${{ matrix.os.name }}
+    # This for `moonbitlang/x` CI 
+    env: 
+      OS_PLATFORM: ${{ matrix.os.name }}
+
+    continue-on-error: false
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: true 
+      
+      - name: Setup MoonBit toolchain
+        run: node scripts_node/install-moonbit-toolchain.js
+        env: 
+          MOONBIT_VERSION: pre-release
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.18.0'  # Specific major version
+
+
+      - name: MoonBit toolchain version
+        run:  moon version --all
+
+      - name: Update MoonBit mooncakes registry
+        run: moon update
+
+      - name: Install Dependencies for each repo 
+        run: |
+          moon install -C repos/core/
+          moon install -C repos/x/
+          moon install -C repos/async/
+
+      - name: moon info for `moonbitlang/core`
+        run: | 
+          moon info --target all 
+          git diff --exit-code
+        working-directory: repos/core/
+
+      # refer to `moonbitlang/x` CI
+      - name: moon info for `moonbitlang/x`
+        run: | 
+          moon info
+          git diff --exit-code
+        working-directory: repos/x/
+
+      # refer to `moonbitlang/async` CI
+      - name: moon info for `moonbitlang/async`
+        run: |
+          moon info --target native
+          git diff --exit-code
+        working-directory: repos/async/
+
+  check:
+    strategy:
+      matrix:
+        os:
+          - name: ubuntu-latest
+            triple: x86_64-linux-gnu
+          - name: macos-latest
+            triple: arm64-apple-darwin
+          - name: windows-latest
+            triple: x86_64-w64-msvc
+      fail-fast: false
+    runs-on: ${{ matrix.os.name }}
+    # This for `moonbitlang/x` CI 
+    env: 
+      OS_PLATFORM: ${{ matrix.os.name }}
+
+    continue-on-error: false
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: true 
+      
+      - name: Setup MoonBit toolchain
+        run: node scripts_node/install-moonbit-toolchain.js
+        env: 
+          MOONBIT_VERSION: pre-release
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.18.0'  # Specific major version
+
+
+      - name: MoonBit toolchain version
+        run:  moon version --all
+
+      - name: Update MoonBit mooncakes registry
+        run: moon update
+
+      - name: Install Dependencies for each repo 
+        run: |
+          moon install -C repos/core/
+          moon install -C repos/x/
+          moon install -C repos/async/
+
+      # Don't specify `--deny-warn` flags
+      - name: Check for moonbitlang/core 
+        run: moon check --target all -C repos/core/
+
+      - name: Check for moonbitlang/x 
+        run: moon check --target all -C repos/x/
+
+      # `moonbitlang/async` only work in `macos` and `linux` right now
+      - name: Check for moonbitlang/async 
+        if: ${{ matrix.os.name != 'windows-latest' }}
+        run: moon check --target native -C repos/async/
+
+      - name: Check for system-prompt 
+        run: moon check repos/system-prompt/Agents.mbt.md

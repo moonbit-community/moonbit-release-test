@@ -1,0 +1,12 @@
+[submodule "repos/core"]
+	path = repos/core
+	url = git@github.com:moonbitlang/core.git
+[submodule "repos/x"]
+	path = repos/x
+	url = git@github.com:moonbitlang/x.git
+[submodule "repos/async"]
+	path = repos/async
+	url = git@github.com:moonbitlang/async.git
+[submodule "repos/system-prompt"]
+	path = repos/system-prompt
+	url = git@github.com:moonbitlang/system-prompt.git
